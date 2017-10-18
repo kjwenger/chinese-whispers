@@ -1,0 +1,3 @@
+[submodule "chinese_whispers.senecajs"]
+	path = chinese_whispers.senecajs
+	url = https://github.com/kjwenger/chinese_whispers.senecajs.git
