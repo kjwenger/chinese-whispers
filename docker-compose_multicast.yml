@@ -1,0 +1,104 @@
+version: '3'
+
+services:
+
+    chinese_whispers.base:
+        image: chinese_whispers/base
+        build:
+            context: ./chinese_whispers.senecajs/
+            dockerfile: docker/base/Dockerfile
+        container_name: chinese_whispers.base
+        labels:
+            description: 'Return all the chained translation from one locale to another locale of a posted chinese whisper'
+        ports:
+            - '39999:39999'
+        restart: 'on-failure'
+        command: ["npm", "run", "start:server"]
+        environment:
+            DEBUG: ${DEBUG}
+            SENECA_MESH_ISBASE: 1
+            SENECA_MESH_PORT: 39999
+            SENECA_MESH_PINS: '[]'
+
+    chinese_whispers.conductor:
+        image: chinese_whispers/conductor
+        build: ./chinese_whispers.senecajs/
+        container_name: chinese_whispers.conductor
+        depends_on:
+            - chinese_whispers.base
+        links:
+            - chinese_whispers.base
+        labels:
+            description: 'Return all the chained translation from one locale to another locale of a posted chinese whisper'
+        ports:
+            - '8910:8910'
+        restart: 'on-failure'
+        command: ["npm", "run", "start:server"]
+        environment:
+            DEBUG: ${DEBUG}
+            PORT: 8910
+            SENECA_MESH_ISBASE: 0
+            SENECA_MESH_PINS: '[{"role": "conductor"}]'
+            YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
+
+    chinese_whispers.translator.en-de:
+        image: chinese_whispers/translator.en-de
+        build: ./chinese_whispers.senecajs/
+        container_name: chinese_whispers.translator.en-de
+        depends_on:
+            - chinese_whispers.base
+            - chinese_whispers.conductor
+        links:
+            - chinese_whispers.base
+            - chinese_whispers.conductor
+        labels:
+            description: 'Return the translation from one locale to another locale of a posted chinese whisper'
+        restart: 'on-failure'
+        command: ["npm", "run", "start:service"]
+        environment:
+            DEBUG: ${DEBUG}
+            SENECA_MESH_ISBASE: 0
+            SENECA_MESH_PINS: '[{"role": "translator", "from": "en", "to": "de"}]'
+            YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
+
+    chinese_whispers.translator.de-fr:
+        image: chinese_whispers/translator.de-fr
+        build: ./chinese_whispers.senecajs/
+        container_name: chinese_whispers.translator.de-fr
+        depends_on:
+            - chinese_whispers.base
+            - chinese_whispers.conductor
+        links:
+            - chinese_whispers.base
+            - chinese_whispers.conductor
+        labels:
+            description: 'Return the translation from one locale to another locale of a posted chinese whisper'
+        restart: 'on-failure'
+        command: ["npm", "run", "start:service"]
+        environment:
+            DEBUG: ${DEBUG}
+            SENECA_MESH_ISBASE: 0
+            SENECA_MESH_PINS: '[{"role": "translator", "from": "de", "to": "fr", "provider": "liar"}]'
+            YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
+
+    chinese_whispers.monitor:
+        image: chinese_whispers/monitor
+        build: ./chinese_whispers.senecajs/
+        container_name: chinese_whispers.monitor
+        labels:
+            description: 'Monitors all chinese whisper services'
+        depends_on:
+            - chinese_whispers.base
+            - chinese_whispers.conductor
+            - chinese_whispers.translator.en-de
+            - chinese_whispers.translator.de-fr
+        links:
+            - chinese_whispers.base
+            - chinese_whispers.conductor
+            - chinese_whispers.translator.en-de
+            - chinese_whispers.translator.de-fr
+        restart: 'on-failure'
+        command: ["npm", "run", "start:monitor"]
+        environment:
+            DEBUG: ${DEBUG}
+            SENECA_MESH_PINS: '[]'
