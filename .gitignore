@@ -1,0 +1,5 @@
+# dotenv environment variables file
+.env
+
+# IDEs
+/.idea/workspace.xml
