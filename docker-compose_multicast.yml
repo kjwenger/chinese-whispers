@@ -33,7 +33,7 @@ services:
         ports:
             - '8910:8910'
         restart: 'on-failure'
-        command: ["npm", "run", "start:server"]
+        command: ["npm", "run", "start:base"]
         environment:
             DEBUG: ${DEBUG}
             PORT: 8910

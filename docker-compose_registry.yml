@@ -1,6 +1,23 @@
-version: '3'
+version: '3.2'
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
 
 services:
+    # prometheus:
+    #     image: prom/prometheus
+    # volumes:
+    #     - ./prometheus/:/etc/prometheus/
+    #     - prometheus_data:/prometheus
+    # command:
+    #     - '-config.file=/etc/prometheus/prometheus.yml'
+    #     - '-storage.local.path=/prometheus'
+    #     - '-web.console.libraries=/usr/share/prometheus/console_libraries'
+    #     - '-web.console.templates=/usr/share/prometheus/consoles'
+    # ports:
+    #     - 9090:9090
+    # restart: 'always'
 
     chinese_whispers.registry:
         image: progrium/consul
@@ -19,102 +36,110 @@ services:
             context: ./chinese_whispers.senecajs/
             dockerfile: docker/base/Dockerfile
         container_name: chinese_whispers.base
+        depends_on:
+            - chinese_whispers.registry
+        links:
+            - chinese_whispers.registry
         labels:
             description: 'Return all the chained translation from one locale to another locale of a posted chinese whisper'
         ports:
             - '39002:39002'
-        restart: 'on-failure'
-        command: ["npm", "run", "start:server"]
+        restart: 'no'
+        command: ["npm", "run", "start:base"]
         environment:
             DEBUG: ${DEBUG}
-            SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
+            SENECA_CONSUL_REGISTRY: |
+                {
+                    "host": "localhost"
+                }
             SENECA_MESH_ISBASE: 1
             SENECA_MESH_PORT: 39002
-            SENECA_MESH_PINS: '[]'
+            SENECA_MESH_PINS: |
+                []
 
-    chinese_whispers.conductor:
-        image: chinese_whispers/conductor
-        build: ./chinese_whispers.senecajs/
-        container_name: chinese_whispers.conductor
-        depends_on:
-            - chinese_whispers.base
-        links:
-            - chinese_whispers.base
-        labels:
-            description: 'Return all the chained translation from one locale to another locale of a posted chinese whisper'
-        ports:
-            - '8910:8910'
-        restart: 'on-failure'
-        command: ["npm", "run", "start:server"]
-        environment:
-            DEBUG: ${DEBUG}
-            PORT: 8910
-            SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
-            SENECA_MESH_ISBASE: 0
-            SENECA_MESH_PINS: '[{"role": "conductor"}]'
-            YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
+    # chinese_whispers.conductor:
+    #     image: chinese_whispers/conductor
+    #     build: ./chinese_whispers.senecajs/
+    #     container_name: chinese_whispers.conductor
+    #     depends_on:
+    #         - chinese_whispers.base
+    #     links:
+    #         - chinese_whispers.base
+    #     labels:
+    #         description: 'Return all the chained translation from one locale to another locale of a posted chinese whisper'
+    #     ports:
+    #         - '8910:8910'
+    #     restart: 'on-failure'
+    #     command: ["npm", "run", "start:server"]
+    #     environment:
+    #         DEBUG: ${DEBUG}
+    #         PORT: 8910
+    #         SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
+    #         SENECA_MESH_ISBASE: 0
+    #         SENECA_MESH_PINS: '[{"role": "conductor"}]'
+    #         YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
 
-    chinese_whispers.translator.en-de:
-        image: chinese_whispers/translator.en-de
-        build: ./chinese_whispers.senecajs/
-        container_name: chinese_whispers.translator.en-de
-        depends_on:
-            - chinese_whispers.base
-            - chinese_whispers.conductor
-        links:
-            - chinese_whispers.base
-            - chinese_whispers.conductor
-        labels:
-            description: 'Return the translation from one locale to another locale of a posted chinese whisper'
-        restart: 'on-failure'
-        command: ["npm", "run", "start:service"]
-        environment:
-            DEBUG: ${DEBUG}
-            SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
-            SENECA_MESH_ISBASE: 0
-            SENECA_MESH_PINS: '[{"role": "translator", "from": "en", "to": "de"}]'
-            YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
+    # chinese_whispers.translator.en-de:
+    #     image: chinese_whispers/translator.en-de
+    #     build: ./chinese_whispers.senecajs/
+    #     container_name: chinese_whispers.translator.en-de
+    #     depends_on:
+    #         - chinese_whispers.base
+    #         - chinese_whispers.conductor
+    #     links:
+    #         - chinese_whispers.base
+    #         - chinese_whispers.conductor
+    #     labels:
+    #         description: 'Return the translation from one locale to another locale of a posted chinese whisper'
+    #     restart: 'on-failure'
+    #     command: ["npm", "run", "start:service"]
+    #     environment:
+    #         DEBUG: ${DEBUG}
+    #         SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
+    #         SENECA_MESH_ISBASE: 0
+    #         SENECA_MESH_PINS: '[{"role": "translator", "from": "en", "to": "de"}]'
+    #         YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
 
-    chinese_whispers.translator.de-fr:
-        image: chinese_whispers/translator.de-fr
-        build: ./chinese_whispers.senecajs/
-        container_name: chinese_whispers.translator.de-fr
-        depends_on:
-            - chinese_whispers.base
-            - chinese_whispers.conductor
-        links:
-            - chinese_whispers.base
-            - chinese_whispers.conductor
-        labels:
-            description: 'Return the translation from one locale to another locale of a posted chinese whisper'
-        restart: 'on-failure'
-        command: ["npm", "run", "start:service"]
-        environment:
-            DEBUG: ${DEBUG}
-            SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
-            SENECA_MESH_ISBASE: 0
-            SENECA_MESH_PINS: '[{"role": "translator", "from": "de", "to": "fr", "provider": "liar"}]'
-            YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
+    # chinese_whispers.translator.de-fr:
+    #     image: chinese_whispers/translator.de-fr
+    #     build: ./chinese_whispers.senecajs/
+    #     container_name: chinese_whispers.translator.de-fr
+    #     depends_on:
+    #         - chinese_whispers.base
+    #         - chinese_whispers.conductor
+    #     links:
+    #         - chinese_whispers.base
+    #         - chinese_whispers.conductor
+    #     labels:
+    #         description: 'Return the translation from one locale to another locale of a posted chinese whisper'
+    #     restart: 'on-failure'
+    #     command: ["npm", "run", "start:service"]
+    #     environment:
+    #         DEBUG: ${DEBUG}
+    #         SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
+    #         SENECA_MESH_ISBASE: 0
+    #         SENECA_MESH_PINS: '[{"role": "translator", "from": "de", "to": "fr", "provider": "liar"}]'
+    #         YANDEX_TRANSLATE_API_KEY: ${YANDEX_TRANSLATE_API_KEY}
 
-    chinese_whispers.monitor:
-        image: chinese_whispers/monitor
-        build: ./chinese_whispers.senecajs/
-        container_name: chinese_whispers.monitor
-        labels:
-            description: 'Monitors all chinese whisper services'
-        depends_on:
-            - chinese_whispers.base
-            - chinese_whispers.conductor
-            - chinese_whispers.translator.en-de
-            - chinese_whispers.translator.de-fr
-        links:
-            - chinese_whispers.base
-            - chinese_whispers.conductor
-            - chinese_whispers.translator.en-de
-            - chinese_whispers.translator.de-fr
-        restart: 'on-failure'
-        command: ["npm", "run", "start:monitor"]
-        environment:
-            DEBUG: ${DEBUG}
-            SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
-            SENECA_MESH_PINS: '[]'
+    # chinese_whispers.monitor:
+    #     image: chinese_whispers/monitor
+    #     build: ./chinese_whispers.senecajs/
+    #     container_name: chinese_whispers.monitor
+    #     labels:
+    #         description: 'Monitors all chinese whisper services'
+    #     depends_on:
+    #         - chinese_whispers.base
+    #         - chinese_whispers.conductor
+    #         - chinese_whispers.translator.en-de
+    #         - chinese_whispers.translator.de-fr
+    #     links:
+    #         - chinese_whispers.base
+    #         - chinese_whispers.conductor
+    #         - chinese_whispers.translator.en-de
+    #         - chinese_whispers.translator.de-fr
+    #     restart: 'on-failure'
+    #     command: ["npm", "run", "start:monitor"]
+    #     environment:
+    #         DEBUG: ${DEBUG}
+    #         SENECA_CONSUL_REGISTRY: '{"host": "127.0.0.1", "port": 8500}'
+    #         SENECA_MESH_PINS: '[]'
