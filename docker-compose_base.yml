@@ -1,0 +1,76 @@
+version: "3.2"
+
+services:
+
+# --- CONSUL: Service Registry for Seneca.js Microservice Discoverability ---
+
+    consul:
+        image: progrium/consul
+        ports:
+            - 8400:8400
+            - 8500:8500
+            - 8600:53/udp
+        container_name: "consul"
+        restart: "on-failure"
+        entrypoint: /bin/start -server -bootstrap
+
+# --- CHINESE WHISPERS: Seneca.js Microservice Suite for the Chinese Whispers Game Implementation ---
+
+    chinese_whispers.base:
+        image: chinese_whispers/senecajs
+        build:
+            context: ./chinese_whispers.senecajs/
+            dockerfile: docker/base/Dockerfile
+        container_name: chinese_whispers.base
+        depends_on:
+            - consul
+        links:
+            - consul
+        labels:
+            description: "Return all the chained translation from one locale to another locale of a posted chinese whisper"
+        ports:
+            - 39002:39002
+        restart: "on-failure"
+        command: ["npm", "run", "start:base"]
+        environment:
+            DEBUG: ${DEBUG}
+            SENECA_MESH_ISBASE: 1
+            SENECA_MESH_PORT: 39001
+
+    chinese_whispers.translator.en-de:
+        image: chinese_whispers/senecajs
+        build: ./chinese_whispers.senecajs/
+        container_name: chinese_whispers.translator.en-de
+        depends_on:
+            - chinese_whispers.base
+        links:
+            - chinese_whispers.base
+        labels:
+            description: "Return the translation from one locale to another locale of a posted chinese whisper"
+        restart: "on-failure"
+        command: ["npm", "run", "start:google"]
+        environment:
+            DEBUG: ${DEBUG}
+            SENECA_MESH_BASES: |
+                ["chinese_whispers.base:39002"]
+            SENECA_MESH_PIN: "cmd:translate,from:en,role:translator,to:de"
+
+    chinese_whispers.api:
+        image: chinese_whispers/senecajs
+        build: ./chinese_whispers.senecajs/
+        container_name: chinese_whispers.api
+        depends_on:
+            - chinese_whispers.base
+        links:
+            - chinese_whispers.base
+        labels:
+            description: "Return all the chained translation from one locale to another locale of a posted chinese whisper"
+        ports:
+            - 8765:8765
+        restart: "on-failure"
+        command: ["npm", "run", "start:api"]
+        environment:
+            DEBUG: ${DEBUG}
+            PORT: 8765
+            SENECA_MESH_BASES: |
+                ["chinese_whispers.base:39002"]
